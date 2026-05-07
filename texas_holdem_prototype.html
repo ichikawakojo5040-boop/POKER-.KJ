@@ -1,0 +1,287 @@
+
+<h2 class="sr-only">Texas Hold'em Poker プロトタイプ — リアルタイム勝率表示つきインタラクティブゲーム</h2>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.pw{font-family:var(--font-sans);padding:.25rem 0}
+.felt{background:#142e20;border:3px solid #276040;border-radius:80px;padding:1.5rem 3.5rem;position:relative;margin:.5rem 0}
+.zone{display:flex;flex-direction:column;align-items:center;gap:6px}
+.zlb{font-size:11px;color:rgba(255,255,255,.38);letter-spacing:.08em}
+.cnum{font-size:14px;font-weight:500;color:#f0c040}
+.crow{display:flex;gap:6px;justify-content:center;min-height:68px;align-items:center}
+.card{width:46px;height:66px;background:#fafafa;border-radius:5px;border:1px solid rgba(0,0,0,.12);display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:500;flex-shrink:0;position:relative}
+.card .rk{font-size:15px;line-height:1.15}
+.card .su{font-size:12px;line-height:1}
+.red{color:#c0392b}.blk{color:#111}
+.back{background:#1a2e6a;border-color:#243d96}
+.back::after{content:'♦';color:rgba(255,255,255,.1);font-size:30px;position:absolute}
+.empty{background:transparent;border:1.5px dashed rgba(255,255,255,.1)}
+.mid{display:flex;flex-direction:column;align-items:center;gap:7px;padding:.7rem 0}
+.pdots{display:flex;gap:5px}
+.pd{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.1);transition:background .3s}
+.pd.done{background:rgba(255,255,255,.38)}.pd.active{background:#4ade80}
+.phnm{font-size:11px;color:rgba(255,255,255,.32);letter-spacing:.06em}
+.potlb{font-size:12px;color:rgba(255,255,255,.4)}
+.potlb b{color:#f0c040;font-weight:500}
+.wbox{width:190px}
+.whdr{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+.wlb{font-size:11px;color:rgba(255,255,255,.38)}.wpct{font-size:20px;font-weight:500;color:#fff}
+.wtr{height:5px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden}
+.wb{height:100%;border-radius:3px;transition:width .5s ease,background .5s ease;background:#4ade80}
+.hnm{font-size:11px;color:rgba(255,255,255,.3);min-height:13px;text-align:center}
+.stbar{font-size:12px;color:rgba(255,255,255,.62);text-align:center;min-height:16px;padding:0 .5rem}
+.sep{border:none;border-top:1px solid rgba(255,255,255,.06);width:100%;margin:2px 0}
+.emts{position:absolute;right:.8rem;top:50%;transform:translateY(-50%);display:none;flex-direction:column;gap:4px}
+.emb{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:background .15s;padding:0}
+.emb:hover{background:rgba(255,255,255,.14)}
+.ep{position:absolute;right:2.8rem;background:rgba(255,255,255,.9);color:#111;border-radius:14px;padding:3px 9px;font-size:12px;pointer-events:none;white-space:nowrap;animation:pi .15s ease,fo .3s ease .85s forwards}
+@keyframes pi{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
+@keyframes fo{to{opacity:0}}
+.acts{display:flex;gap:8px;justify-content:center;padding:.5rem 0 0;flex-wrap:wrap}
+.ab{padding:8px 18px;border-radius:var(--border-radius-md);font-size:13px;font-weight:500;cursor:pointer;border:1.5px solid;background:transparent;transition:all .15s}
+.ab:disabled{opacity:.32;cursor:not-allowed}
+.fold{border-color:#f87171;color:#f87171}.fold:hover:not(:disabled){background:rgba(248,113,113,.1)}
+.call{border-color:#34d399;color:#34d399}.call:hover:not(:disabled){background:rgba(52,211,153,.1)}
+.raise{border-color:#fbbf24;color:#fbbf24}.raise:hover:not(:disabled){background:rgba(251,191,36,.1)}
+.newg{border-color:var(--color-border-secondary);color:var(--color-text-secondary)}.newg:hover:not(:disabled){background:var(--color-background-secondary)}
+.bnr{border-radius:var(--border-radius-md);padding:.45rem 1rem;text-align:center;font-size:13px;font-weight:500;margin:.25rem 0;display:none}
+.bwin{background:rgba(74,222,128,.1);color:#4ade80;border:1px solid rgba(74,222,128,.2)}
+.blose{background:rgba(248,113,113,.1);color:#f87171;border:1px solid rgba(248,113,113,.2)}
+.btie{background:rgba(251,191,36,.1);color:#fbbf24;border:1px solid rgba(251,191,36,.2)}
+</style>
+
+<div class="pw">
+<div class="felt" id="felt">
+  <div class="zone" style="margin-bottom:.6rem">
+    <div class="zlb">dealer</div>
+    <div class="crow" id="aiC"><div class="card back"></div><div class="card back"></div></div>
+    <div class="cnum" id="aiChip">1000</div>
+  </div>
+  <hr class="sep">
+  <div class="mid">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="pdots"><div class="pd" id="d0"></div><div class="pd" id="d1"></div><div class="pd" id="d2"></div><div class="pd" id="d3"></div></div>
+      <div class="phnm" id="phnm">—</div>
+    </div>
+    <div class="crow" id="commC">
+      <div class="card empty"></div><div class="card empty"></div><div class="card empty"></div><div class="card empty"></div><div class="card empty"></div>
+    </div>
+    <div class="potlb">pot: <b id="potN">0</b></div>
+    <div class="wbox">
+      <div class="whdr"><span class="wlb">あなたの勝率</span><span class="wpct" id="wpct">—</span></div>
+      <div class="wtr"><div class="wb" id="wbar" style="width:50%"></div></div>
+    </div>
+    <div class="hnm" id="hnm"></div>
+    <div class="stbar" id="st">新しいゲームを始めよう</div>
+  </div>
+  <hr class="sep">
+  <div class="zone" style="margin-top:.6rem">
+    <div class="cnum" id="plChip">1000</div>
+    <div class="crow" id="plC"><div class="card empty"></div><div class="card empty"></div></div>
+    <div class="zlb">you</div>
+  </div>
+  <div class="emts" id="emts">
+    <button class="emb" onclick="em('👊')">👊</button>
+    <button class="emb" onclick="em('😎')">😎</button>
+    <button class="emb" onclick="em('🔥')">🔥</button>
+    <button class="emb" onclick="em('🤔')">🤔</button>
+  </div>
+</div>
+<div class="bnr" id="bnr"></div>
+<div class="acts" id="acts"><button class="ab newg" onclick="ng()">新しいゲーム ↗</button></div>
+</div>
+
+<script>
+const SU=[{k:'s',c:'♠',rd:0},{k:'h',c:'♥',rd:1},{k:'d',c:'♦',rd:1},{k:'c',c:'♣',rd:0}];
+const RK=[2,3,4,5,6,7,8,9,10,11,12,13,14];
+const RD={2:'2',3:'3',4:'4',5:'5',6:'6',7:'7',8:'8',9:'9',10:'10',11:'J',12:'Q',13:'K',14:'A'};
+const HN=['ハイカード','ワンペア','ツーペア','スリーカード','ストレート','フラッシュ','フルハウス','フォーカード','ストレートフラッシュ'];
+const PN={preflop:'PREFLOP',flop:'FLOP',turn:'TURN',river:'RIVER',showdown:'SHOWDOWN'};
+const PI={preflop:0,flop:1,turn:2,river:3};
+let PC=1000,AC=1000,G=null;
+
+function mkD(){const d=[];RK.forEach(r=>SU.forEach(s=>d.push({r,k:s.k,c:s.c,rd:s.rd})));return d;}
+function shuf(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=0|Math.random()*(i+1);[b[i],b[j]]=[b[j],b[i]];}return b;}
+
+function ev5(cs){
+  const rs=cs.map(c=>c.r).sort((a,b)=>b-a);
+  const fl=new Set(cs.map(c=>c.k)).size===1;
+  const ur=[...new Set(rs)].sort((a,b)=>b-a);
+  let str=false,sh=0;
+  if(ur.length===5){
+    if(ur[0]-ur[4]===4){str=true;sh=ur[0];}
+    else if(ur[0]===14&&ur[1]===5&&ur[2]===4&&ur[3]===3&&ur[4]===2){str=true;sh=5;}
+  }
+  const fq={};rs.forEach(r=>fq[r]=(fq[r]||0)+1);
+  const gp=Object.entries(fq).map(([r,c])=>({r:+r,c})).sort((a,b)=>b.c-a.c||b.r-a.r);
+  let cat,tb;
+  if(fl&&str){cat=8;tb=[sh];}
+  else if(gp[0].c===4){cat=7;tb=[gp[0].r,gp[1]?.r||0];}
+  else if(gp[0].c===3&&gp[1]?.c===2){cat=6;tb=[gp[0].r,gp[1].r];}
+  else if(fl){cat=5;tb=rs;}
+  else if(str){cat=4;tb=[sh];}
+  else if(gp[0].c===3){cat=3;tb=gp.map(g=>g.r);}
+  else if(gp[0].c===2&&gp[1]?.c===2){cat=2;tb=gp.map(g=>g.r);}
+  else if(gp[0].c===2){cat=1;tb=gp.map(g=>g.r);}
+  else{cat=0;tb=rs;}
+  return{cat,tb};
+}
+
+function bh(hole,comm){
+  const all=[...hole,...comm];
+  if(all.length<5)return{cat:-1,tb:[]};
+  let best=null;const n=all.length;
+  for(let a=0;a<n-4;a++)for(let b=a+1;b<n-3;b++)for(let c=b+1;c<n-2;c++)for(let d=c+1;d<n-1;d++)for(let e=d+1;e<n;e++){
+    const h=ev5([all[a],all[b],all[c],all[d],all[e]]);
+    if(!best||cmH(h,best)>0)best=h;
+  }
+  return best;
+}
+
+function cmTb(a,b){for(let i=0;i<Math.max(a.length,b.length);i++){const d=(a[i]||0)-(b[i]||0);if(d)return d;}return 0;}
+function cmH(h1,h2){if(h1.cat!==h2.cat)return h1.cat-h2.cat;return cmTb(h1.tb,h2.tb);}
+
+function calcWR(ph,ah,cm,n=350){
+  const dk=mkD();
+  const kn=[...ph,...ah,...cm];
+  const rm=dk.filter(c=>!kn.some(k=>k.r===c.r&&k.k===c.k));
+  const nd=5-cm.length;
+  if(nd===0){const c=cmH(bh(ph,cm),bh(ah,cm));return c>0?100:c===0?50:0;}
+  let w=0,t=0;
+  for(let i=0;i<n;i++){const s=shuf(rm);const fc=[...cm,...s.slice(0,nd)];const c=cmH(bh(ph,fc),bh(ah,fc));if(c>0)w++;else if(c===0)t++;}
+  return Math.round((w+t*.5)/n*100);
+}
+
+function cEl(card,face=true){
+  if(!face)return`<div class="card back"></div>`;
+  if(!card)return`<div class="card empty"></div>`;
+  return`<div class="card ${card.rd?'red':'blk'}"><span class="rk">${RD[card.r]}</span><span class="su">${card.c}</span></div>`;
+}
+function rC(id,cards,face,n=2){document.getElementById(id).innerHTML=Array.from({length:n},(_,i)=>cards[i]?cEl(cards[i],face):cEl(null)).join('');}
+function rComm(){document.getElementById('commC').innerHTML=Array.from({length:5},(_,i)=>G.cm[i]?cEl(G.cm[i]):cEl(null)).join('');}
+
+function updWR(){
+  if(!G)return;
+  const w=calcWR(G.ph,G.ah,G.cm);G.wr=w;
+  const pct=document.getElementById('wpct');const bar=document.getElementById('wbar');
+  if(pct)pct.textContent=w+'%';
+  if(bar){bar.style.width=w+'%';bar.style.background=w>=60?'#4ade80':w>=40?'#fbbf24':'#f87171';}
+  if(G.cm.length>0){const h=bh(G.ph,G.cm);const hn=document.getElementById('hnm');if(hn&&h&&h.cat>=0)hn.textContent=HN[h.cat]||'';}
+}
+
+function updPh(){
+  const sd=G.phase==='showdown';
+  const idx=PI[G.phase]??-1;
+  for(let i=0;i<4;i++){const el=document.getElementById('d'+i);if(el)el.className='pd'+(sd?' done':i<idx?' done':i===idx?' active':'');}
+  const pn=document.getElementById('phnm');if(pn)pn.textContent=PN[G.phase]||'';
+}
+
+function st(m){const el=document.getElementById('st');if(el)el.textContent=m;}
+function updC(){
+  document.getElementById('plChip').textContent=PC;
+  document.getElementById('aiChip').textContent=AC;
+  document.getElementById('potN').textContent=G?G.pot:0;
+}
+
+function showBnr(msg,type){const el=document.getElementById('bnr');if(el){el.className='bnr b'+type;el.textContent=msg;el.style.display='block';}}
+function hideBnr(){const el=document.getElementById('bnr');if(el)el.style.display='none';}
+
+function setActs(mode){
+  const el=document.getElementById('acts');if(!el)return;
+  if(mode==='idle'){el.innerHTML=`<button class="ab newg" onclick="ng()">新しいゲーム ↗</button>`;return;}
+  if(mode==='action'){
+    const ca=G.curB-G.pB;
+    el.innerHTML=`<button class="ab fold" onclick="act('fold')">フォールド</button><button class="ab call" onclick="act('call')">${ca>0?'コール +'+ca:'チェック'}</button><button class="ab raise" onclick="act('raise')">レイズ +${G.rA}</button>`;
+    return;
+  }
+  if(mode==='wait'){el.innerHTML=`<button class="ab newg" disabled>ディーラー思考中…</button>`;return;}
+  if(mode==='over'){el.innerHTML=`<button class="ab newg" onclick="ng()">もう一回 ↗</button>`;return;}
+}
+
+function em(e){
+  const f=document.getElementById('felt');if(!f)return;
+  const old=f.querySelector('.ep');if(old)old.remove();
+  const d=document.createElement('div');d.className='ep';d.textContent=e;
+  d.style.top=(30+Math.random()*38)+'%';f.appendChild(d);
+  setTimeout(()=>d.remove(),1350);
+}
+
+function ng(){
+  hideBnr();
+  const ante=20;
+  if(PC<ante)PC=1000;if(AC<ante)AC=1000;
+  PC-=ante;AC-=ante;
+  const dk=shuf(mkD());
+  G={phase:'preflop',dk,di:4,ph:[dk[0],dk[1]],ah:[dk[2],dk[3]],cm:[],pot:ante*2,curB:0,pB:0,aB:0,rA:40,wr:50};
+  rC('aiC',[],false,2);
+  rC('plC',G.ph,true,2);
+  rComm();updC();updPh();updWR();
+  document.getElementById('hnm').textContent='';
+  st('プリフロップ — アクションを選んでください');
+  setActs('action');
+  document.getElementById('emts').style.display='flex';
+}
+
+function act(a){
+  if(a==='fold'){
+    AC+=G.pot;G.pot=0;updC();
+    G.phase='showdown';updPh();
+    rC('aiC',G.ah,true,2);
+    st('フォールド — ディーラーの勝ち');
+    showBnr('フォールド。ディーラーの勝ち。','lose');
+    setActs('over');return;
+  }
+  if(a==='call'){
+    const ca=G.curB-G.pB;
+    if(ca>0){PC-=ca;G.pot+=ca;G.pB=G.curB;}
+    updC();adv();return;
+  }
+  if(a==='raise'){
+    const ca=G.curB-G.pB,tot=ca+G.rA;
+    PC-=tot;G.pot+=tot;G.pB=G.curB+G.rA;G.curB=G.pB;updC();
+    st('レイズ！ — ディーラーが考え中…');setActs('wait');
+    setTimeout(()=>{
+      const ac2=G.curB-G.aB;AC-=ac2;G.pot+=ac2;G.aB=G.curB;updC();
+      st('ディーラーがコール');
+      setTimeout(()=>adv(),650);
+    },900);
+    return;
+  }
+}
+
+function adv(){
+  const seq=['preflop','flop','turn','river','showdown'];
+  G.phase=seq[seq.indexOf(G.phase)+1];
+  G.curB=0;G.pB=0;G.aB=0;
+  if(G.phase==='flop'){G.cm=[G.dk[G.di++],G.dk[G.di++],G.dk[G.di++]];}
+  else if(G.phase==='turn'||G.phase==='river'){G.cm.push(G.dk[G.di++]);}
+  rComm();updPh();
+  if(G.phase==='showdown'){doSD();return;}
+  updWR();
+  st(PN[G.phase]+' — アクションを選んでください');
+  setActs('action');
+}
+
+function doSD(){
+  rC('aiC',G.ah,true,2);
+  const ph2=bh(G.ph,G.cm),ah2=bh(G.ah,G.cm);
+  const c=cmH(ph2,ah2);
+  const pn=ph2?.cat>=0?HN[ph2.cat]:'';const an=ah2?.cat>=0?HN[ah2.cat]:'';
+  const pct=document.getElementById('wpct');const bar=document.getElementById('wbar');
+  if(c>0){
+    PC+=G.pot;
+    if(pct)pct.textContent='100%';if(bar){bar.style.width='100%';bar.style.background='#4ade80';}
+    st('SHOWDOWN — '+pn+' vs '+an);
+    showBnr('あなたの勝ち！ +'+G.pot+'チップ ('+pn+') 🏆','win');
+  }else if(c<0){
+    AC+=G.pot;
+    if(pct)pct.textContent='0%';if(bar){bar.style.width='0%';bar.style.background='#f87171';}
+    st('SHOWDOWN — '+an+' vs '+pn);
+    showBnr('ディーラーの勝ち ('+an+')','lose');
+  }else{
+    const h=0|G.pot/2;PC+=h;AC+=h;
+    if(pct)pct.textContent='50%';if(bar){bar.style.width='50%';bar.style.background='#fbbf24';}
+    st('SHOWDOWN — タイ！');showBnr('タイ — ポットを山分け','tie');
+  }
+  G.pot=0;document.getElementById('potN').textContent='0';updC();setActs('over');
+}
+</script>
